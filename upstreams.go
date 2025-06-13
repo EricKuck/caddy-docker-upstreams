@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
@@ -23,7 +21,6 @@ import (
 
 const (
 	LabelEnable       = "com.caddyserver.http.enable"
-	LabelNetwork      = "com.caddyserver.http.network"
 	LabelUpstreamPort = "com.caddyserver.http.upstream.port"
 )
 
@@ -44,8 +41,6 @@ var (
 var defaultFilters = filters.NewArgs(
 	filters.Arg("label", fmt.Sprintf("%s=true", LabelEnable)),
 	filters.Arg("status", "running"), // types.ContainerState.Status
-	filters.Arg("health", types.Healthy),
-	filters.Arg("health", types.NoHealthcheck),
 )
 
 // Upstreams provides upstreams from the docker host.
@@ -73,62 +68,19 @@ func (u *Upstreams) provisionCandidates(ctx caddy.Context, cli *client.Client) e
 		// Build upstream.
 		port, ok := c.Labels[LabelUpstreamPort]
 		if !ok {
-			ctx.Logger().Error("unable to get port from container labels",
-				zap.String("container_id", c.ID),
-			)
-			continue
-		}
-
-		// Choose network to connect.
-		if len(c.NetworkSettings.Networks) == 0 {
-			ctx.Logger().Error("unable to get ip address from container networks",
-				zap.String("container_id", c.ID),
-			)
-			continue
-		}
-
-		network, ok := c.Labels[LabelNetwork]
-		if !ok {
-			// Use the first network settings of container.
-			for _, settings := range c.NetworkSettings.Networks {
-				address := net.JoinHostPort(settings.IPAddress, port)
-				updated = append(updated, candidate{
-					matchers: matchers,
-					upstream: &reverseproxy.Upstream{Dial: address},
-				})
-				break
-			}
-			continue
-		}
-
-		settings, ok := c.NetworkSettings.Networks[network]
-		if !ok {
-			// Add project prefix. See also https://github.com/compose-spec/compose-go/blob/main/loader/normalize.go.
-			const projectLabel = "com.docker.compose.project"
-			project, ok := c.Labels[projectLabel]
-			if !ok {
-				ctx.Logger().Error("unable to get network settings from container",
+			if len(c.Ports) == 0 {
+				ctx.Logger().Error("unable to get port from container labels or config",
 					zap.String("container_id", c.ID),
-					zap.String("network", network),
 				)
 				continue
 			}
 
-			network = fmt.Sprintf("%s_%s", project, network)
-			settings, ok = c.NetworkSettings.Networks[network]
-			if !ok {
-				ctx.Logger().Error("unable to get network settings from container",
-					zap.String("container_id", c.ID),
-					zap.String("network", network),
-				)
-				continue
-			}
+            port = fmt.Sprintf("%d", c.Ports[0].PublicPort)
 		}
 
-		address := net.JoinHostPort(settings.IPAddress, port)
 		updated = append(updated, candidate{
 			matchers: matchers,
-			upstream: &reverseproxy.Upstream{Dial: address},
+			upstream: &reverseproxy.Upstream{Dial: "localhost:" + port},
 		})
 	}
 
