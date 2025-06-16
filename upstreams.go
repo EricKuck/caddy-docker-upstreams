@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	LabelEnable       = "com.caddyserver.http.enable"
-	LabelUpstreamPort = "com.caddyserver.http.upstream.port"
+	LabelEnable       = "caddy.enable"
+	LabelUpstreamPort = "caddy.port"
 )
 
 func init() {

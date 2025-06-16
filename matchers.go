@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	LabelMatchProtocol   = "com.caddyserver.http.matchers.protocol"
-	LabelMatchHost       = "com.caddyserver.http.matchers.host"
-	LabelMatchMethod     = "com.caddyserver.http.matchers.method"
-	LabelMatchPath       = "com.caddyserver.http.matchers.path"
-	LabelMatchQuery      = "com.caddyserver.http.matchers.query"
-	LabelMatchExpression = "com.caddyserver.http.matchers.expression"
+	LabelMatchProtocol   = "caddy.protocol"
+	LabelMatchHost       = "caddy.host"
+	LabelMatchMethod     = "caddy.method"
+	LabelMatchPath       = "caddy.path"
+	LabelMatchQuery      = "caddy.query"
+	LabelMatchExpression = "caddy.expression"
 )
 
 var producers = map[string]func(string) (caddyhttp.RequestMatcher, error){
